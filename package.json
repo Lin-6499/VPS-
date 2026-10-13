@@ -1,0 +1,29 @@
+{
+  "name": "xray-management",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first Xray device and UUID traffic management prototype",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "check": "node scripts/check.js",
+    "test:ssh": "cross-env XRAY_SSH_INTEGRATION=1 node --test",
+    "db:migrate": "node src/db-cli.js",
+    "db:import": "node src/db-cli.js --import",
+    "admin:create": "node src/admin-cli.js create",
+    "admin:reset-password": "node src/admin-cli.js reset-password",
+    "test:mysql": "cross-env XRAY_MYSQL_TEST=1 node --test test/mysql.test.js test/traffic.test.js test/auth-mysql.test.js"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^18.0.7",
+    "mysql2": "^3.24.5",
+    "qrcode": "^1.5.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

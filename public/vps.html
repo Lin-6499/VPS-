@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RayGate · VPS 管理</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app" id="appRoot">
+    <aside class="sidebar" aria-label="主导航">
+      <a class="brand" href="/" aria-label="RayGate 首页"><span class="brand-mark" aria-hidden="true">RG</span><span><strong>RayGate</strong><small>节点设备控制台</small></span></a>
+      <nav>
+        <a class="nav-item active" href="/vps.html" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h6M11 17h6"/></svg>VPS 管理</a>
+        <a class="nav-item" href="/nodes.html"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg>节点管理</a>
+        <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h.01M7 15h.01M11 9h6M11 15h6"/></svg>设备管理</a>
+      </nav>
+      <div class="sidebar-foot"><span><i></i>MySQL 持久化</span><small>私钥受控存储</small></div>
+    </aside>
+
+    <main class="main vps-main">
+      <header class="page-head">
+        <div><h1>VPS 管理</h1><p>维护服务器资料、套餐流量、到期时间和 SSH 信任状态。</p></div>
+        <div class="head-actions"><button class="button primary" id="addServer"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新增 VPS</button></div>
+      </header>
+
+      <section class="vps-toolbar" aria-label="VPS 筛选">
+        <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="serverSearch" type="search" placeholder="搜索 VPS 名称或 IPv4"><span class="sr-only">搜索 VPS</span></label>
+        <label><span class="sr-only">SSH 状态</span><select id="sshStatus"><option value="all">全部 SSH 状态</option><option value="online">可连接</option><option value="untested">未检测</option><option value="awaiting_trust">待确认指纹</option><option value="failed">检测失败</option><option value="host_key_changed">主机密钥变化</option></select></label>
+        <label><span class="sr-only">到期状态</span><select id="expiryStatus"><option value="all">全部到期状态</option><option value="normal">有效</option><option value="soon">7 天内到期</option><option value="expired">已到期</option><option value="unknown">未填写到期日</option></select></label>
+        <button class="button subtle" id="refreshServers">刷新</button>
+      </section>
+
+      <div class="vps-list-head"><h2>服务器 <span id="serverCount">—</span></h2><p>卡片状态表示 SSH 检测结果，不代表 VPS 电源状态。</p></div>
+      <section class="vps-grid" id="serverGrid" aria-live="polite"></section>
+      <section class="vps-empty" id="serverEmpty" hidden><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg><h2>还没有匹配的 VPS</h2><p>调整筛选条件，或新增一台 VPS 开始管理。</p><button class="button primary" id="emptyAdd">新增 VPS</button></section>
+    </main>
+  </div>
+
+  <dialog id="serverDialog" class="server-dialog" aria-labelledby="serverDialogTitle">
+    <form id="serverForm" enctype="multipart/form-data">
+      <header><div><h2 id="serverDialogTitle">新增 VPS</h2><p id="serverDialogSubtitle">资料保存后可独立进行 SSH 检测。</p></div><button type="button" class="icon-button" data-close="serverDialog" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="dialog-body">
+        <div class="form-grid">
+          <label class="field field-wide">VPS 名称 <span>*</span><input name="name" id="serverName" maxlength="100" placeholder="例如：洛杉矶主节点" required></label>
+          <label class="field">IPv4 <span>*</span><input name="sshHost" id="serverIpv4" inputmode="decimal" placeholder="203.0.113.10" required></label>
+          <label class="field">SSH 端口 <span>*</span><input name="sshPort" id="serverPort" type="number" min="1" max="65535" value="22" required></label>
+          <label class="field">SSH 用户名 <span>*</span><input name="sshUser" id="serverUser" value="root" maxlength="64" required></label>
+          <label class="field">到期时间<input name="expiresOn" id="serverExpires" type="date"></label>
+          <label class="field">内存（GB）<input name="memoryGb" id="serverMemory" type="number" min="0" step="0.01" placeholder="4"></label>
+          <label class="field">系统盘（GB）<input name="systemDiskGb" id="serverDisk" type="number" min="0" step="0.01" placeholder="60"></label>
+          <label class="field">套餐额度（GB）<input name="trafficQuotaGb" id="serverQuota" type="number" min="0" step="0.01" placeholder="1000"></label>
+          <label class="field field-wide">VPS 官方链接<input name="officialUrl" id="serverUrl" type="url" maxlength="2048" placeholder="https://provider.example.com/server"></label>
+          <label class="field field-wide file-field">SSH 私钥 <span id="keyRequired">*</span><input name="sshKey" id="serverKey" type="file"><small id="keyHelp">仅支持无密码私钥，最大 64 KiB。服务器只保存受控目录中的相对路径。</small></label>
+        </div>
+        <div class="callout">首次 SSH 检测不会直接信任远端主机。页面会显示主机指纹，只有确认后才尝试使用私钥连接。</div>
+        <p class="form-error" id="serverFormError" role="alert"></p>
+      </div>
+      <footer><button type="button" class="button" data-close="serverDialog">取消</button><button type="submit" class="button primary" id="saveServer">保存 VPS</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="usageDialog" aria-labelledby="usageTitle" aria-describedby="usageEffect">
+    <form id="usageForm">
+      <header><div><h2 id="usageTitle">校准已用流量</h2><p id="usageServer"></p></div><button type="button" class="icon-button" data-close="usageDialog" aria-label="关闭校准"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="dialog-body">
+        <div class="detail-grid usage-summary"><div class="detail-item"><span>当前套餐用量</span><b id="usageCurrent">尚未校准</b></div><div class="detail-item"><span>套餐额度</span><b id="usageQuota">未填写</b></div></div>
+        <p class="usage-note" id="usageRecordedAt"></p>
+        <label class="field">已用流量（GB） <span>*</span><input id="usageGb" name="usedGb" type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" required aria-describedby="usageHelp usageFormError"><small id="usageHelp">填写服务商当前计费周期的已用总量，不是本次增加量。支持 0，最多两位小数。</small></label>
+        <p class="usage-note" id="usagePreview" aria-live="polite"></p>
+        <p class="callout" id="usageEffect">保存会写入一份手动快照，不改设备流量历史。若已启用 KiwiVM，下一次成功同步会用 API 数据替换该快照。</p>
+        <p class="form-error" id="usageFormError" role="alert"></p>
+      </div>
+      <footer><button type="button" class="button" data-close="usageDialog">取消</button><button type="submit" class="button primary" id="saveUsage">保存校准</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="kiwiDialog" aria-labelledby="kiwiTitle" aria-describedby="kiwiSecurity">
+    <form id="kiwiForm">
+      <header><div><h2 id="kiwiTitle">配置 KiwiVM 流量同步</h2><p id="kiwiServer"></p></div><button type="button" class="icon-button" data-close="kiwiDialog" aria-label="关闭 KiwiVM 配置"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="dialog-body">
+        <div class="provider-summary" id="kiwiSummary" hidden></div>
+        <div class="form-grid">
+          <label class="field">VEID <span>*</span><input id="kiwiVeid" name="veid" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" autocomplete="off" required aria-describedby="kiwiVeidHelp kiwiFormError"><small id="kiwiVeidHelp">在 KiwiVM 控制台 API 页面查看。</small></label>
+          <label class="field">API Key <span id="kiwiKeyRequired">*</span><input id="kiwiApiKey" name="apiKey" type="password" maxlength="128" autocomplete="new-password" aria-describedby="kiwiKeyHelp kiwiFormError"><small id="kiwiKeyHelp">首次配置必填。</small></label>
+        </div>
+        <p class="callout" id="kiwiSecurity">保存时会立即调用 KiwiVM <code>getServiceInfo</code> 验证凭证。API Key 仅保存在本机受控目录，不写入页面、不通过查询接口返回。</p>
+        <p class="form-error" id="kiwiFormError" role="alert"></p>
+      </div>
+      <footer class="provider-footer"><button type="button" class="button danger" id="removeKiwi" hidden>停用自动同步</button><span class="footer-spacer"></span><button type="button" class="button" data-close="kiwiDialog">取消</button><button type="submit" class="button primary" id="saveKiwi">保存并同步</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="trustDialog" aria-labelledby="trustTitle" aria-describedby="trustDescription">
+    <form method="dialog">
+      <header><div><h2 id="trustTitle">确认 SSH 主机指纹</h2><p>首次连接需要建立主机信任。</p></div></header>
+      <div class="dialog-body"><p id="trustDescription">请在服务商控制台核对以下指纹，确认无误后再继续。</p><output class="fingerprint" id="hostFingerprint"></output><p class="callout">确认后会将主机公钥写入数据库。未来密钥变化时，RayGate 将阻止连接。</p></div>
+      <footer><button class="button" value="cancel">取消</button><button class="button primary" id="confirmTrust" value="confirm">确认并连接</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="serverDetails" aria-labelledby="detailsTitle">
+    <div><header><div><h2 id="detailsTitle">VPS 详情</h2><p id="detailsSubtitle"></p></div><button class="icon-button" data-close="serverDetails" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><div class="dialog-body" id="detailsBody"></div><footer><button class="button" data-close="serverDetails">完成</button></footer></div>
+  </dialog>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="/vps.js"></script>
+</body>
+</html>

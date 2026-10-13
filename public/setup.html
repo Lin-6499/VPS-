@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>初始化管理员 · RayGate</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-panel" aria-labelledby="setupTitle">
+      <div class="login-brand"><span class="brand-mark">RG</span><span><strong>RayGate</strong><small>节点设备控制台</small></span></div>
+      <header><h1 id="setupTitle">设置管理员账号</h1><p>这是一次性初始化页面。创建成功后，该链接会立即失效。</p></header>
+      <form id="setupForm">
+        <label class="field">用户名<input id="username" name="username" value="admin" autocomplete="username" minlength="3" maxlength="64" required autofocus></label>
+        <label class="field">新密码<span class="password-control"><input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button type="button" data-toggle="password">显示</button></span><small>至少 12 个字符。</small></label>
+        <label class="field">确认密码<span class="password-control"><input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button type="button" data-toggle="confirmPassword">显示</button></span></label>
+        <p class="form-error login-error" id="setupError" role="alert"></p>
+        <button class="button primary login-submit" id="setupButton">创建管理员并登录</button>
+      </form>
+      <p class="login-help">密码只会发送到当前本机 RayGate 服务，并以不可逆哈希形式保存。</p>
+    </section>
+  </main>
+  <script type="module" src="/setup.js"></script>
+</body>
+</html>

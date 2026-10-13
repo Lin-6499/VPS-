@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RayGate · Xray 设备管理</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app" id="appRoot">
+    <aside class="sidebar" aria-label="主导航">
+      <a class="brand" href="/" aria-label="RayGate 首页">
+        <span class="brand-mark" aria-hidden="true">RG</span>
+        <span><strong>RayGate</strong><small>节点设备控制台</small></span>
+      </a>
+      <nav>
+        <a class="nav-item" href="/vps.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h6M11 17h6"/></svg>VPS 管理</a>
+        <a class="nav-item" href="/nodes.html"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="m8 11 8-4M8 13l8 4"/></svg>节点管理</a>
+        <button class="nav-item active" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h.01M7 15h.01M11 9h6M11 15h6"/></svg>设备管理</button>
+      </nav>
+      <div class="sidebar-foot"><span><i></i>MySQL 持久化</span><small>后台每 60 秒采集</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="page-head">
+        <div><h1>设备管理</h1><p>按 UUID 识别设备，查看独立流量、来源地址与连接状态。</p></div>
+        <div class="head-actions">
+          <span class="service" id="serviceBadge"><i></i><b>正在连接 Xray</b></span>
+          <button class="button primary" id="addDevice"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>添加设备</button>
+        </div>
+      </header>
+
+      <section class="metrics" aria-label="设备概览">
+        <article><span>设备总数</span><strong id="metricTotal">—</strong><small>台</small></article>
+        <article><span><i class="live-dot"></i>当前在线</span><strong id="metricOnline">—</strong><small>台</small></article>
+        <article><span>已停用</span><strong id="metricDisabled">—</strong><small>台</small></article>
+        <article><span>接入后的累计流量</span><strong id="metricTraffic">—</strong><small>GiB</small></article>
+      </section>
+
+      <section class="workspace" aria-labelledby="deviceListTitle">
+        <div class="notice"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg><span><b>历史流量已启用</b>　每分钟采集，明细保留 30 天，日汇总长期保存。采集异常时保留历史值。</span><time id="lastRefresh">正在读取</time></div>
+        <div class="toolbar">
+          <h2 id="deviceListTitle">设备列表 <span id="resultCount"></span></h2>
+          <div class="filters">
+            <label><span class="sr-only">VPS 筛选</span><select id="serverFilter"><option value="">全部 VPS</option></select></label>
+            <label><span class="sr-only">节点筛选</span><select id="nodeFilter"><option value="">全部节点</option></select></label>
+            <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="searchInput" type="search" placeholder="设备名称、UUID、用户或来源 IP"><span class="sr-only">搜索设备</span></label>
+            <label><span class="sr-only">状态筛选</span><select id="statusFilter"><option value="all">全部状态</option><option value="online">在线</option><option value="offline">离线</option><option value="disabled">已停用</option><option value="unknown">未知 / 过期</option></select></label>
+            <button class="button subtle" id="refreshButton">刷新</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+          <thead><tr><th>设备名称</th><th>UUID</th><th>状态</th><th>来源公网 IP</th><th>活跃IP</th><th>今日消耗</th><th>最后活动</th><th>启停</th><th>操作</th></tr></thead>
+            <tbody id="deviceRows"></tbody>
+          </table>
+          <div class="empty" id="emptyState" hidden><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><strong>没有匹配的设备</strong><span>调整搜索词或状态筛选后重试。</span></div>
+        </div>
+        <div class="pagination"><button class="button subtle" id="previousPage">上一页</button><span id="pageInfo"></span><button class="button subtle" id="nextPage">下一页</button></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="addDialog" aria-labelledby="addTitle">
+    <form method="dialog" id="addForm">
+      <header><div><h2 id="addTitle">添加设备</h2><p>创建独立 UUID 和可识别用户名称。</p></div><button type="button" class="icon-button" data-close-dialog="addDialog" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="dialog-body">
+        <label class="field">接入节点<select id="deviceNode" required></select></label>
+        <label class="field">设备归属<select id="existingDevice"><option value="">新建设备</option></select><small>为已有设备添加其他节点时，选择同一设备即可汇总流量。</small></label>
+        <label class="field">设备名称 <span>*</span><input id="deviceName" maxlength="30" placeholder="例如：Windows 办公电脑" required><small>使用容易辨认的名称，后续会映射到 Xray 用户。</small></label>
+        <label class="field">设备备注<input id="deviceNote" maxlength="60" placeholder="例如：上海办公室 / v2rayN"></label>
+        <div class="callout">凭证写入所选节点。操作会备份、校验并保存配置，通过动态 API 添加用户，不重启服务。已采集的历史流量会保留。</div>
+        <p class="form-error" id="addError" role="alert"></p>
+      </div>
+      <footer><button type="button" class="button" data-close-dialog="addDialog">取消</button><button type="submit" class="button primary" id="createDevice">创建设备</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="toggleDialog" aria-labelledby="toggleTitle" aria-describedby="toggleDescription">
+    <form method="dialog">
+      <header><h2 id="toggleTitle">确认启停</h2></header>
+      <div class="dialog-body"><p id="toggleDescription"></p><p class="callout">通过动态 API 生效，不重启服务。停用阻止新连接，已有连接可能继续至结束。</p></div>
+      <footer><button class="button" value="cancel" autofocus>取消</button><button class="button primary" id="confirmToggle" value="confirm">确认</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="qrDialog" class="qr-dialog" aria-labelledby="qrTitle">
+    <div>
+      <header><div><h2 id="qrTitle">扫码导入节点</h2><p id="qrSubtitle"></p></div><button class="icon-button" data-close-dialog="qrDialog" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="dialog-body qr-layout"><div class="qr-frame"><img id="qrImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="节点 VLESS 二维码"></div><div><span class="demo-label">真实节点凭证</span><p id="qrNodeSummary"></p><textarea id="vlessLink" readonly aria-label="VLESS 节点导入链接"></textarea><div class="inline-actions"><button class="button primary" id="copyLink">复制链接</button><a class="button" id="downloadQr" download="vless-qr.svg">下载二维码</a></div></div></div>
+      <footer><button class="button" data-close-dialog="qrDialog">完成</button></footer>
+    </div>
+  </dialog>
+
+  <div class="drawer-shell" id="drawerShell" aria-hidden="true">
+    <button class="drawer-backdrop" id="drawerBackdrop" aria-label="关闭详情"></button>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <header><div><h2 id="drawerTitle">设备详情</h2><p id="drawerSubtitle"></p></div><button class="icon-button" id="closeDrawer" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+      <div class="drawer-body" id="drawerBody"></div>
+    </aside>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

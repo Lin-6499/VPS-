@@ -1,0 +1,33 @@
+# Dependencies and generated reports
+node_modules/
+coverage/
+.impeccable/
+.test-*/
+
+# Local runtime data, logs, SSH private keys and provider API secrets
+data/
+storage/
+logs/
+*.log
+
+# Environment-specific credentials (commit the example only)
+.env
+.env.*
+!.env.example
+
+# Local backups, database exports and credential files
+backups/
+*.sql.gz
+*.sql.zip
+*.dump
+*.bak
+*.key
+*.pem
+*.ppk
+*.secret
+
+# Editor and operating-system state
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
